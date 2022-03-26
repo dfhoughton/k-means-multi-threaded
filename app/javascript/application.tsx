@@ -2,20 +2,26 @@
 import {
   Box,
   Button,
-  Container,
   createTheme,
   CssBaseline,
-  Grid,
+  debounce,
   Stack,
   TextField,
   ThemeProvider,
   Typography,
 } from "@mui/material"
 import * as React from "react"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import * as ReactDOM from "react-dom"
-import { pick, Point, splat } from "./util/data"
+import { ClusteringManager } from "./util/clustering"
+import {
+  Centroid,
+  pick,
+  Point,
+  splat,
+} from "./util/data"
 import { ClusterChart } from "./util/graph"
+import { LabeledSlider } from "./util/slider"
 
 const mdTheme = createTheme()
 
@@ -26,72 +32,74 @@ const colors =
 
 const App: React.FC = () => {
   const [threads, setThreads] = useState(1)
+  const [clusterer] = useState(
+    new ClusteringManager(
+      threads,
+      (document.getElementById("worker") as any).src
+    )
+  )
   const [clusterCount, setClusterCount] = useState(1)
-  const [width, setWidth] = useState(500)
-  const [height, setHeight] = useState(500)
-  const [radius, setRadius] = useState(2)
+  const [width, setWidth] = useState(600)
+  const [unbouncedWidth, setUnbouncedWidth] = useState<number | "">(width)
+  const [height, setHeight] = useState(600)
+  const [unbouncedHeight, setUnbouncedHeight] = useState<number | "">(height)
+  const [radius, setRadius] = useState(3)
   const [data, setData] = useState<Point[]>([])
-  const [centroids, setCentroids] = useState<Point[]>([])
+  const [running, setRunning] = useState(false)
+  const [centroids, setCentroids] = useState<Centroid[]>([])
   const [splatStart, setSplatStart] = useState<null | Point>(null)
+  const [iterations, setIterations] = useState<undefined | number>(undefined)
+  const [totalTime, setTotalTime] = useState(0)
+
+  useEffect(() => clusterer.stop(), [])
 
   // callbacks used for adding splats to the data
-  const startSplat = useCallback((p: Point) => {
+  const startSplat = (p: Point) => {
     setSplatStart(p)
-  }, [])
-  const endSplat = useCallback(
-    (p: Point) => {
-      if (splatStart) {
-        const pile = splat({ start: splatStart, end: p, width, height })
-        console.log("adding splat", pile)
-        if (pile.length) {
-          setData(data.concat(pile))
-          setSplatStart(null)
-        }
+  }
+  const endSplat = (p: Point) => {
+    if (splatStart) {
+      const pile = splat({
+        start: splatStart,
+        end: p,
+        width,
+        height,
+        zoom: 2.5,
+      })
+      if (pile.length) {
+        setData(data.concat(pile))
+        setSplatStart(null)
       }
-    },
-    [splatStart]
-  )
-  const leave = useCallback(() => {
-    setSplatStart(null)
-  }, [])
-
-  // clustering callbacks
-  const beginClustering = useCallback(() => {}, [])
-  const clearData = useCallback(() => setData([]), [])
-  const clearAll = useCallback(() => {
-    setCentroids([])
-    clearData()
-  }, [])
-  const clearClassifications = useCallback(() => {
-    for (const d of data) {
-      delete d.label
     }
-    setData([...data])
-  }, [data])
-  const clearClusters = useCallback(() => {
-    clearClassifications()
-    setCentroids([])
-  }, [clearClassifications])
-  const startClustering = useCallback(() => {
-    // TODO stop ongoing clustering -- this should probably be synchronous
-    clearClusters()
-    let newCentroids = pick(clusterCount, data)
-    for (let i = 0; i < clusterCount; i++) {
+  }
+  const leave = () => {
+    setSplatStart(null)
+  }
+
+  const pickCentroids = () => {
+    const newCentroids = pick(clusterCount, data)
+    for (const p of data) {
+      delete p.label
+    }
+    for (let i = 0; i < newCentroids.length; i++) {
       newCentroids[i].label = colors[i]
     }
-    setCentroids(newCentroids)
-    // TODO actually start things going
-  }, [clearClusters, clusterCount])
-
-  // aesthetic callbacks
-  const changeWidth = useCallback((n: number) => {
-    clearAll()
-    setWidth(n)
-  }, [])
-  const changeHeight = useCallback((n: number) => {
-    clearAll()
-    setHeight(n)
-  }, [])
+    setCentroids(newCentroids as any as Centroid[])
+    setData([...data])
+  }
+  const clearData = () => setData([])
+  const clearAll = () => {
+    setCentroids([])
+    clearData()
+  }
+  const changeWidth = useCallback(
+    debounce((n) => setWidth(n), 500),
+    []
+  )
+  const changeHeight = useCallback(
+    debounce((n) => setHeight(n), 500),
+    []
+  )
 
   return (
     <ThemeProvider theme={mdTheme}>
@@ -103,58 +111,104 @@ const App: React.FC = () => {
           </Typography>
           <Stack direction="row" alignItems="center" spacing={5}>
             <Stack direction="column" alignItems="center" spacing={2}>
-            <TextField
-                variant="outlined"
-                type="number"
+              <LabeledSlider
                 label="clusters"
+                min={1}
+                max={colors.length}
                 value={clusterCount}
-                inputProps={{ min: 1, max: colors.length, step: 1 }}
-                onChange={(e) =>
-                  setClusterCount(Number.parseInt(e.target.value))
-                }
+                onChange={(n) => setClusterCount(n)}
               />
-              <TextField
-                variant="outlined"
-                type="number"
+              <LabeledSlider
                 label="threads"
+                min={1}
+                max={8}
                 value={threads}
-                inputProps={{ min: 1, max: 8, step: 1 }}
-                onChange={(e) => setThreads(Number.parseInt(e.target.value))}
+                onChange={(n) => setThreads(n)}
+              />
+              <LabeledSlider
+                label="radius"
+                min={2}
+                max={10}
+                value={radius}
+                onChange={(n) => setRadius(n)}
               />
               <TextField
                 variant="outlined"
                 type="number"
                 label="width"
-                value={width}
+                value={unbouncedWidth}
                 inputProps={{ min: 100, max: 1000, step: 1 }}
-                onChange={(e) => changeWidth(Number.parseInt(e.target.value))}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (!v) {
+                    setUnbouncedWidth("")
+                  } else {
+                    const n = Number.parseInt(v)
+                    setUnbouncedWidth(n)
+                    changeWidth(n)
+                  }
+                }}
               />
               <TextField
                 variant="outlined"
                 type="number"
                 label="height"
-                value={height}
+                value={unbouncedHeight}
                 inputProps={{ min: 100, max: 1000, step: 1 }}
-                onChange={(e) => changeHeight(Number.parseInt(e.target.value))}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (!v) {
+                    setUnbouncedHeight("")
+                  } else {
+                    const n = Number.parseInt(v)
+                    setUnbouncedHeight(n)
+                    changeHeight(n)
+                  }
+                }}
               />
-              <TextField
+              <Button
                 variant="outlined"
-                type="number"
-                label="radius"
-                value={radius}
-                inputProps={{ min: 2, max: 10, step: 1 }}
-                onChange={(e) => setRadius(Number.parseInt(e.target.value))}
-              />
+                disabled={clusterCount > data.length}
+                onClick={pickCentroids}
+              >
+                Pick
+              </Button>
+              <Button variant="outlined" color="success">
+                Go
+              </Button>
+              <Button variant="outlined" color="warning">
+                Step
+              </Button>
+              <Button variant="outlined" color="error">
+                Stop
+              </Button>
               <Button variant="outlined" onClick={clearAll}>
-                Clear Data
+                Clear
               </Button>
             </Stack>
-            <ClusterChart
-              {...{ data, width, height, radius }}
-              startCallback={startSplat}
-              endCallback={endSplat}
-              leaveCallback={leave}
-            />
+            <Stack direction="column" alignItems="center" spacing={2}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Typography variant="h6" component="h2">
+                  Points
+                </Typography>
+                <Box>{data.length}</Box>
+                <Typography variant="h6" component="h2">
+                  Iterations
+                </Typography>
+                <Box>{iterations}</Box>
+                <Typography variant="h6" component="h2">
+                  Time/Iteration
+                </Typography>
+                <Box>{iterations && totalTime / iterations}</Box>
+              </Stack>
+              <ClusterChart
+                {...{ data, width, height, radius }}
+                border={4}
+                startCallback={startSplat}
+                endCallback={endSplat}
+                leaveCallback={leave}
+              />
+            </Stack>
           </Stack>
         </Stack>
       </Box>

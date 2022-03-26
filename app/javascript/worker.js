@@ -1,1 +1,0 @@
-// the stuff to do on a worker thread

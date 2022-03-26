@@ -8,6 +8,9 @@ export type Point = {
   y: number
 }
 
+// a point which can be a centroid
+export type Centroid = Required<Point>
+
 // give each point the same label as the closest centroid
 export const categorize = (points: Point[], centroids: Point[]) => {
   const [c, ...rest] = centroids
@@ -25,14 +28,27 @@ export const categorize = (points: Point[], centroids: Point[]) => {
   }
 }
 
+// general sorting algorithm for points
+export const pointSorter = (
+  { x: x1, y: y1, label: l1 = "" }: Point,
+  { x: x2, y: y2, label: l2 = "" }: Point
+): number => {
+  if (x1 < x2) return -1
+  if (x2 < x1) return 1
+  if (y1 < y2) return -1
+  if (y2 < y1) return 1
+  if (l1 < l2) return -1
+  if (l1 < l1) return 1
+  return 0
+}
+
 // find the centroid of a set of points
-export const centroid = (points: Point[], label?: string): Point => {
+export const centroid = (points: Point[], label: string): Centroid => {
   let x = 0
   let y = 0
   for (const p of points) {
     x += p.x
     y += p.y
-    label ??= p.label
   }
   x /= points.length
   y /= points.length
@@ -50,18 +66,15 @@ export const pick = <T>(n: number, items: T[]): T[] => {
   return selection
 }
 
+// make a unique *spatial* identifier for a point
+export const pointId = ({ x, y }: Point): string => `${x},${y}`
+
 // produce a unique id for a set of points
 // useful for recognizing when the clustering algorithm has converged
 export const setId = (points: Point[]): string => {
   points = [...points]
-  points.sort(({ x: x1, y: y1 }, { x: x2, y: y2 }) => {
-    if (x1 < x2) return -1
-    if (x2 < x1) return 1
-    if (y1 < y2) return -1
-    if (y2 < y1) return 1
-    return 0
-  })
-  return points.map(({ x, y }) => `${x},${y}`).join(";")
+  points.sort(pointSorter)
+  return points.map((p) => pointId(p)).join(";")
 }
 
 // the euclidean distance between two points
@@ -79,17 +92,18 @@ export const splat = ({
   end,
   width,
   height,
+  zoom,
 }: {
   start: Point
   end: Point
   width: number
   height: number
+  zoom: number
 }): Point[] => {
   const { x, y } = start
   const radius = distance(start, end)
   const count = Math.max(Math.min(Math.round((radius / 10) ** 2), 100), 5)
-  console.log({ radius, count })
-  return randomSplat({ x, y, radius, count }).filter(
+  return randomSplat({ x, y, radius, count, zoom }).filter(
     ({ x, y }) => x >= 0 && x <= width && y >= 0 && y <= height
   )
 }
@@ -100,17 +114,19 @@ const randomSplat = ({
   y,
   radius,
   count,
+  zoom,
 }: {
   x: number
   y: number
   radius: number
   count: number
+  zoom: number
 }): Point[] => {
   const splat: Point[] = []
   while (splat.length < count) {
     splat.push({
-      x: shiver(jump(x, radius)),
-      y: shiver(jump(y, radius)),
+      x: shiver(jump(x, radius, zoom), radius),
+      y: shiver(jump(y, radius, zoom), radius),
     })
   }
   return splat
@@ -122,16 +138,18 @@ const shiver = (n: number, magnitude: number = 2): number =>
 
 // shift n a random, binomially distributed amount with a maximum amount of radius
 const jump = (n: number, radius: number, step: number = 2): number => {
-  let steps = 0
+  let steps = 0,
+    offset = 0
   while (steps < radius) {
-    let num = Math.floor(2 ** 16 * Math.random())
-    while (num && steps < radius) {
+    let num = ~~((2 ** 16 - 1) * Math.random())
+    while (steps < radius) {
+      if (num === 1) break
       steps += 1
-      n += (num & 1) === 1 ? step : -step
+      offset += (num & 1) === 1 ? step : -step
       num = num >> 1
     }
   }
-  return n
+  return n + offset
 }
 
 // split an array into n roughly equal-length groups
@@ -147,4 +165,21 @@ export const group = <T>(n: number, ar: T[]): T[][] => {
     if (remainder) remainder--
   }
   return groups
+}
+
+// zip together two arrays of the same length
+export const zip = <T, K>(ar1: T[], ar2: K[]): [T, K][] => {
+  if (ar1.length !== ar2.length)
+    throw new Error("you can only zip arrays of the same length")
+  const ar = []
+  for (let i = 0; i < ar1.length; i++) {
+    ar.push([ar1[i]!, ar2[i]!] as [T, K])
+  }
+  return ar
+}
+
+// exhaustiveness checker
+export function assertNever(x: never): never {
+  console.error(x)
+  throw new Error("Unexpected object: " + x)
 }
