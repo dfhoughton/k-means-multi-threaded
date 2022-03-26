@@ -8,18 +8,14 @@ import {
   Stack,
   TextField,
   ThemeProvider,
+  Tooltip,
   Typography,
 } from "@mui/material"
 import * as React from "react"
 import { useCallback, useEffect, useState } from "react"
 import * as ReactDOM from "react-dom"
 import { ClusteringManager } from "./util/clustering"
-import {
-  Centroid,
-  pick,
-  Point,
-  splat,
-} from "./util/data"
+import { Centroid, pick, Point, splat } from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
 
@@ -166,25 +162,43 @@ const App: React.FC = () => {
                   }
                 }}
               />
-              <Button
-                variant="outlined"
-                disabled={clusterCount > data.length}
-                onClick={pickCentroids}
+              <Tooltip
+                title="pick a random set of nodes to be initial cluster centroids"
+                arrow
+                placement="right"
               >
-                Pick
-              </Button>
-              <Button variant="outlined" color="success">
-                Go
-              </Button>
-              <Button variant="outlined" color="warning">
-                Step
-              </Button>
-              <Button variant="outlined" color="error">
-                Stop
-              </Button>
-              <Button variant="outlined" onClick={clearAll}>
-                Clear
-              </Button>
+                <Button
+                  variant="outlined"
+                  disabled={clusterCount > data.length}
+                  onClick={pickCentroids}
+                >
+                  Pick
+                </Button>
+              </Tooltip>
+              <Tooltip
+                title="start clustering without pause"
+                arrow
+                placement="right"
+              >
+                <Button variant="outlined" color="success">
+                  Go
+                </Button>
+              </Tooltip>
+              <Tooltip title="cluster once" arrow placement="right">
+                <Button variant="outlined" color="warning">
+                  Step
+                </Button>
+              </Tooltip>
+              <Tooltip title="stop clustering" arrow placement="right">
+                <Button variant="outlined" color="error">
+                  Stop
+                </Button>
+              </Tooltip>
+              <Tooltip title="remove all data" arrow placement="right">
+                <Button variant="outlined" onClick={clearAll}>
+                  Clear
+                </Button>
+              </Tooltip>
             </Stack>
             <Stack direction="column" alignItems="center" spacing={2}>
               <Stack direction="row" alignItems="center" spacing={2}>
