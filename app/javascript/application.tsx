@@ -43,9 +43,24 @@ const HEIGHT = 800 as const
 const ZOOM = 2.5 as const
 const SPLAT_MIN = 5 as const
 const SPLAT_MAX = 200 as const
-const PAUSE = 2000 as const
+const PAUSE = 50 as const
 
 const mdTheme = createTheme()
+
+type ChartState = {
+  data: Point[]
+  centroids: Centroid[]
+  // whether we are clustering constantly
+  running: boolean
+  // whether all clustering is concluded for the current data
+  done: boolean
+  // whether the centroids are ready for clustering
+  initialized: boolean
+  iterations: number
+  time: number
+  timeDelta: string
+  nextAction: null | "cluster" | "centroids"
+}
 
 const App: React.FC = () => {
   const [threads, setThreads] = useState(1)
@@ -60,21 +75,29 @@ const App: React.FC = () => {
   )
   const [clusterCount, setClusterCount] = useState(1)
   const [radius, setRadius] = useState(3)
-  const [data, setData] = useState<Point[]>([])
-  // whether we are clustering constantly
-  const [running, setRunning] = useState(false)
-  // whether all clustering is concluded for the current data
-  const [done, setDone] = useState(false)
-  // whether the centroids are ready for clustering
-  const [initialized, setInitialized] = useState(false)
-  const [centroids, setCentroids] = useState<Centroid[]>([])
   const [splatStart, setSplatStart] = useState<null | Point>(null)
-  const [iterations, setIterations] = useState(0)
-  const [timeBuffer, setTimeBuffer] = useState(0)
-  const [nextAction, setNextAction] = useState<null | "cluster" | "centroids">(
-    null
-  )
-  const [timeDelta, setTimeDelta] = useState("")
+  const [state, setState] = useState<ChartState>({
+    data: [],
+    centroids: [],
+    running: false,
+    done: false,
+    initialized: false,
+    iterations: 0,
+    time: 0,
+    timeDelta: "",
+    nextAction: null,
+  })
+  const {
+    data,
+    centroids,
+    running,
+    done,
+    initialized,
+    iterations,
+    time,
+    timeDelta,
+    nextAction,
+  } = state
 
   useEffect(() => () => clusterer.stop(), [])
 
@@ -94,9 +117,8 @@ const App: React.FC = () => {
         max: SPLAT_MAX,
       })
       if (pile.length) {
-        setDone(false)
-        setData(data.concat(pile))
         setSplatStart(null)
+        setState({ ...state, done: false, data: data.concat(pile) })
       }
     }
   }
@@ -114,33 +136,37 @@ const App: React.FC = () => {
     for (let i = 0; i < newCentroids.length; i++) {
       newCentroids[i].label = COLORS[i]
     }
-    setCentroids(newCentroids as any as Centroid[])
-    clearBuffers()
-    setInitialized(true)
-    setData([...data])
+    setState({
+      ...clearBuffers(state),
+      data: [...data],
+      initialized: true,
+      centroids: newCentroids as any as Centroid[],
+    })
   }
-  const clearBuffers = () => {
-    setDone(false)
-    setTimeBuffer(0)
-    setIterations(0)
-    setTimeDelta("")
-    setInitialized(false)
-  }
-  const clearData = () => {
-    clearBuffers()
-    setData([])
+  const clearBuffers = (state: ChartState): ChartState => ({
+    ...state,
+    done: false,
+    time: 0,
+    timeDelta: "",
+    iterations: 0,
+    initialized: false,
+  })
+  const clearData = (also: Partial<ChartState> = {}) => {
+    setState({ ...clearBuffers(state), ...also, data: [] })
   }
   const clearAll = () => {
-    setCentroids([])
-    clearData()
+    clearData({ centroids: [] })
   }
   const cluster = () => {
     const t1 = new Date().getTime()
     clusterer.cluster(centroids, data).then((points) => {
       const delta = new Date().getTime() - t1
-      setTimeBuffer(timeBuffer + delta)
-      setData(points)
-      setNextAction("centroids")
+      setState({
+        ...state,
+        time: time + delta,
+        data: points,
+        nextAction: "centroids",
+      })
     })
   }
   const calculateCentroids = () => {
@@ -149,21 +175,20 @@ const App: React.FC = () => {
     clusterer.centroids(data).then((newCentroids) => {
       const newId = setId(newCentroids)
       const delta = new Date().getTime() - t1
-      const t = timeBuffer + delta
+      const t = time + delta
       const i = iterations + 1
       const td = Math.round(t / i).toString()
-      setTimeBuffer(t)
-      setIterations(i)
-      setTimeDelta(td)
-      console.log({ i, td, oldId, newId })
+      let newState = { ...state, time: t, iterations: i, timeDelta: td }
       if (oldId === newId) {
-        setDone(true)
-        setRunning(false)
-        setNextAction(null)
+        newState = { ...newState, done: true, running: false, nextAction: null }
       } else {
-        setCentroids(newCentroids)
-        setNextAction(running ? "cluster" : null)
+        newState = {
+          ...newState,
+          centroids: newCentroids,
+          nextAction: running ? "cluster" : null,
+        }
       }
+      setState(newState)
     })
   }
   const doNext = () => {
@@ -200,7 +225,7 @@ const App: React.FC = () => {
                 value={clusterCount}
                 disabled={running}
                 onChange={(n) => {
-                  setDone(false)
+                  const newState = { ...state, done: false }
                   if (n < clusterCount) {
                     for (const p of data) {
                       delete p.label
@@ -209,11 +234,12 @@ const App: React.FC = () => {
                       const c = centroids[i]
                       if (c) c.label = COLORS[i]
                     }
-                    setCentroids(centroids.slice(0, n))
+                    newState.centroids = centroids.slice(0, n)
                   } else {
-                    setInitialized(false)
+                    newState.initialized = false
                   }
                   setClusterCount(n)
+                  setState(newState)
                 }}
               />
               <LabeledSlider
@@ -227,7 +253,7 @@ const App: React.FC = () => {
                   clusterer.threads = n
                 }}
               />
-              <hr style={{width: '100%', color: 'aliceblue'}}/>
+              <hr style={{ width: "100%", color: "aliceblue" }} />
               <LabeledSlider
                 label="radius"
                 min={2}
@@ -236,7 +262,7 @@ const App: React.FC = () => {
                 disabled={false}
                 onChange={(n) => setRadius(n)}
               />
-              <hr style={{width: '100%', color: 'aliceblue'}}/>
+              <hr style={{ width: "100%", color: "aliceblue" }} />
               <Tooltip
                 title="pick a random set of nodes to be initial cluster centroids"
                 arrow
@@ -258,10 +284,13 @@ const App: React.FC = () => {
                     variant="outlined"
                     color="success"
                     disabled={done || running || !initialized}
-                    onClick={() => {
-                      setRunning(true)
-                      setNextAction("cluster")
-                    }}
+                    onClick={() =>
+                      setState({
+                        ...state,
+                        running: true,
+                        nextAction: "cluster",
+                      })
+                    }
                   >
                     Go
                   </Button>
@@ -273,7 +302,9 @@ const App: React.FC = () => {
                     variant="outlined"
                     color="warning"
                     disabled={done || running || !initialized}
-                    onClick={() => setNextAction("cluster")}
+                    onClick={() =>
+                      setState({ ...state, nextAction: "cluster" })
+                    }
                   >
                     Step
                   </Button>
