@@ -10,6 +10,8 @@ export type ClusterChartProps = {
   height: number
   radius: number
   border: number
+  done: boolean
+  running: boolean
   startCallback: (p: Point) => void
   endCallback: (p: Point) => void
   leaveCallback: () => void
@@ -21,6 +23,8 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
   height,
   radius,
   border,
+  done,
+  running,
   startCallback,
   endCallback,
   leaveCallback,
@@ -74,8 +78,14 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     }, 800)
     endCallback(newUp)
   }
+  const color = done ? "green" : running ? "orange" : "gray"
   return (
-    <Box sx={{ display: "table", border: `${border}px solid gray` }}>
+    <Box
+      sx={{
+        display: "table",
+        border: `${border}px solid ${color}`,
+      }}
+    >
       <Typography
         {...{ ref, onMouseDown, onMouseUp }}
         onMouseLeave={() => {

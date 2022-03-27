@@ -102,7 +102,7 @@ export class ClusteringManager {
     }
   }
   // don't use this directly! use one of info, debug, warn, or error
-  private log(level: LogLevel, args: any[]): void {
+  private _log(level: LogLevel, args: any[]): void {
     if (LOG_LEVELS[this.logLevel] <= LOG_LEVELS[level]) {
       let f
       switch (level) {
@@ -110,6 +110,7 @@ export class ClusteringManager {
           f = console.log
           break
         case "debug":
+          args.unshift('[debug]')
           f = console.debug
           break
         case "warn":
@@ -124,10 +125,10 @@ export class ClusteringManager {
       f('[main]', ...args)
     }
   }
-  private info(...args: any[]) { this.log("info", args)}
-  private debug(...args: any[]) { this.log("debug", args)}
-  private warn(...args: any[]) { this.log("warn", args)}
-  private error(...args: any[]) { this.log("error", args)}
+  private info(...args: any[]) { this._log("info", args)}
+  private debug(...args: any[]) { this._log("debug", args)}
+  private warn(...args: any[]) { this._log("warn", args)}
+  private error(...args: any[]) { this._log("error", args)}
   private removeThread() {
     if (this.stopped) return
     if (this._threads === 1)
@@ -223,7 +224,7 @@ export class ClusteringManager {
       map.set(label, ar)
       ar.push(p)
     }
-    const partitions: [string, Point[]][] = Array.from(Object.entries(map))
+    const partitions: [string, Point[]][] = Array.from(map.entries())
     let workers = await this.getWorkers()
     // return unneeded workers
     for (let i = partitions.length; i < workers.length; i++) {
@@ -237,10 +238,8 @@ export class ClusteringManager {
     )
     return new Promise((resolve, _reject) => {
       Promise.all(promises).then((centroids) => {
-        this.debug('the promise has begun', centroids)
         let newCentroids = centroids.shift()!
         for (const otherCentroids of centroids) {
-          this.debug('we got these centroids', otherCentroids)
           newCentroids = newCentroids.concat(otherCentroids)
         }
         newCentroids.sort(pointSorter)

@@ -10,22 +10,39 @@ import {
   Typography,
 } from "@mui/material"
 import * as React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import * as ReactDOM from "react-dom"
 import { ClusteringManager } from "./util/clustering"
-import { Centroid, pick, Point, setId, splat } from "./util/data"
+import { assertNever, Centroid, pick, Point, setId, splat } from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
 
 const mdTheme = createTheme()
 
-const colors =
-  "#196040 #2e443e #acaf3f #24af63 #24b724 #a4e8b2 #366353 #64d6b9 #798740 #55665e".split(
-    " "
-  )
-
-const WIDTH = 600 as const
-const HEIGHT = 600 as const
+const COLORS = [
+  "rgb(173, 35, 35)", // red
+  "rgb(129, 197, 122)", // lt green
+  "rgb(42, 75, 215)", // blue
+  "rgb(160, 160, 160)", // light gray
+  "rgb(29, 105, 20)", // green
+  "rgb(255, 238, 51)", // yellow
+  "rgb(0, 0, 0)", // black
+  "rgb(255, 146, 51)", // orange
+  "rgb(129, 38, 192)", // purple
+  "rgb(41, 208, 208)", // cyan
+  "rgb(129, 74, 25)", // brown
+  "rgb(255, 205, 243)", // pink
+  "rgb(255, 255, 255)", // white
+  "rgb(157, 175, 255)", // lt blue
+  "rgb(233, 222, 187)", // tan
+  "rgb(87, 87, 87)", // dark gray
+] as const
+const WIDTH = 800 as const
+const HEIGHT = 800 as const
+const ZOOM = 2.5 as const
+const SPLAT_MIN = 5 as const
+const SPLAT_MAX = 200 as const
+const PAUSE = 2000 as const
 
 const App: React.FC = () => {
   const [threads, setThreads] = useState(1)
@@ -49,8 +66,12 @@ const App: React.FC = () => {
   const [initialized, setInitialized] = useState(false)
   const [centroids, setCentroids] = useState<Centroid[]>([])
   const [splatStart, setSplatStart] = useState<null | Point>(null)
-  const [iterations, setIterations] = useState<undefined | number>(undefined)
-  const [totalTime, setTotalTime] = useState(0)
+  const [iterations, setIterations] = useState(0)
+  const [timeBuffer, setTimeBuffer] = useState(0)
+  const [nextAction, setNextAction] = useState<null | "cluster" | "centroids">(
+    null
+  )
+  const [timeDelta, setTimeDelta] = useState("")
 
   useEffect(() => () => clusterer.stop(), [])
 
@@ -65,7 +86,9 @@ const App: React.FC = () => {
         end: p,
         width: WIDTH,
         height: HEIGHT,
-        zoom: 2.5,
+        zoom: ZOOM,
+        min: SPLAT_MIN,
+        max: SPLAT_MAX,
       })
       if (pile.length) {
         setDone(false)
@@ -86,40 +109,76 @@ const App: React.FC = () => {
       delete p.label
     }
     for (let i = 0; i < newCentroids.length; i++) {
-      newCentroids[i].label = colors[i]
+      newCentroids[i].label = COLORS[i]
     }
     setCentroids(newCentroids as any as Centroid[])
+    clearBuffers()
     setInitialized(true)
-    setDone(false)
     setData([...data])
   }
-  const clearData = () => setData([])
-  const clearAll = () => {
+  const clearBuffers = () => {
     setDone(false)
+    setTimeBuffer(0)
+    setIterations(0)
+    setTimeDelta("")
+    setInitialized(false)
+  }
+  const clearData = () => {
+    clearBuffers()
+    setData([])
+  }
+  const clearAll = () => {
     setCentroids([])
     clearData()
   }
   const cluster = () => {
-    const t1 = new Date()
+    const t1 = new Date().getTime()
     clusterer.cluster(centroids, data).then((points) => {
-      const t2 = new Date()
+      const delta = new Date().getTime() - t1
+      setTimeBuffer(timeBuffer + delta)
       setData(points)
-      setTotalTime(Number(totalTime) + t2.getTime() - t1.getTime())
-      setIterations((iterations ?? 0) + 1)
-      calculateCentroids()
+      setNextAction("centroids")
     })
   }
   const calculateCentroids = () => {
+    const t1 = new Date().getTime()
+    const oldId = setId(centroids)
     clusterer.centroids(data).then((newCentroids) => {
-      if (setId(centroids) === setId(newCentroids)) {
+      const newId = setId(newCentroids)
+      const delta = new Date().getTime() - t1
+      const t = timeBuffer + delta
+      const i = iterations + 1
+      const td = Math.round(t / i).toString()
+      setTimeBuffer(t)
+      setIterations(i)
+      setTimeDelta(td)
+      console.log({ i, td, oldId, newId })
+      if (oldId === newId) {
         setDone(true)
         setRunning(false)
+        setNextAction(null)
       } else {
         setCentroids(newCentroids)
-        if (running) cluster()
+        setNextAction(running ? "cluster" : null)
       }
     })
   }
+  const doNext = () => {
+    // act on current state
+    switch (nextAction) {
+      case "cluster":
+        cluster()
+        break
+      case "centroids":
+        calculateCentroids()
+        break
+      case null:
+        break
+      default:
+        assertNever(nextAction)
+    }
+  }
+  setTimeout(doNext, running ? PAUSE : 0)
 
   return (
     <ThemeProvider theme={mdTheme}>
@@ -134,7 +193,7 @@ const App: React.FC = () => {
               <LabeledSlider
                 label="clusters"
                 min={1}
-                max={colors.length}
+                max={COLORS.length}
                 value={clusterCount}
                 disabled={running}
                 onChange={(n) => {
@@ -144,7 +203,8 @@ const App: React.FC = () => {
                       delete p.label
                     }
                     for (let i = 0; i < n; i++) {
-                      centroids[i].label = colors[i]
+                      const c = centroids[i]
+                      if (c) c.label = COLORS[i]
                     }
                     setCentroids(centroids.slice(0, n))
                   } else {
@@ -187,19 +247,15 @@ const App: React.FC = () => {
                   </Button>
                 </span>
               </Tooltip>
-              <Tooltip
-                title="start clustering without pause"
-                arrow
-                placement="right"
-              >
+              <Tooltip title="start clustering loop" arrow placement="right">
                 <span>
                   <Button
                     variant="outlined"
                     color="success"
-                    disabled={running || !initialized}
+                    disabled={done || running || !initialized}
                     onClick={() => {
                       setRunning(true)
-                      cluster()
+                      setNextAction("cluster")
                     }}
                   >
                     Go
@@ -211,8 +267,8 @@ const App: React.FC = () => {
                   <Button
                     variant="outlined"
                     color="warning"
-                    disabled={running || !initialized}
-                    onClick={cluster}
+                    disabled={done || running || !initialized}
+                    onClick={() => setNextAction("cluster")}
                   >
                     Step
                   </Button>
@@ -246,14 +302,14 @@ const App: React.FC = () => {
                 <Typography variant="h6" component="h2">
                   Iterations
                 </Typography>
-                <Box>{iterations ?? ''}</Box>
+                <Box>{iterations ?? ""}</Box>
                 <Typography variant="h6" component="h2">
                   Time/Iteration
                 </Typography>
-                <Box>{iterations ? totalTime / iterations : ''}</Box>
+                <Box>{timeDelta}</Box>
               </Stack>
               <ClusterChart
-                {...{ data, radius }}
+                {...{ data, radius, done, running }}
                 width={WIDTH}
                 height={HEIGHT}
                 border={4}

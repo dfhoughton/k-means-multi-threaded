@@ -94,16 +94,20 @@ export const splat = ({
   width,
   height,
   zoom,
+  min,
+  max,
 }: {
   start: Point
   end: Point
   width: number
   height: number
   zoom: number
+  min: number
+  max: number
 }): Point[] => {
   const { x, y } = start
   const radius = distance(start, end)
-  const count = Math.max(Math.min(Math.round((radius / 10) ** 2), 100), 5)
+  const count = Math.max(Math.min(Math.round((radius / 10) ** 2), max), min)
   return randomSplat({ x, y, radius, count, zoom }).filter(
     ({ x, y }) => x >= 0 && x <= width && y >= 0 && y <= height
   )

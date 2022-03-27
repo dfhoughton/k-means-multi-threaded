@@ -3,12 +3,12 @@
 import { ToWorker, FromWorker, LogLevel, LOG_LEVELS } from "./util/clustering"
 import { assertNever, categorize, centroid, Centroid } from "./util/data"
 
-let id: number = 0
+let id: number = -1
 let logLevel: LogLevel = "error"
 
 // do not use this directly!
 // instead, use one of info, debug, warn, or error
-function log(level: LogLevel, args: any[]): void {
+function _log(level: LogLevel, args: any[]): void {
   if (LOG_LEVELS[logLevel] <= LOG_LEVELS[level]) {
     let f
     switch (level) {
@@ -16,6 +16,7 @@ function log(level: LogLevel, args: any[]): void {
         f = console.log
         break
       case "debug":
+        args.unshift('[debug]')
         f = console.debug
         break
       case "warn":
@@ -31,16 +32,16 @@ function log(level: LogLevel, args: any[]): void {
   }
 }
 function info(...args: any[]) {
-  log("info", args)
+  _log("info", args)
 }
 function debug(...args: any[]) {
-  log("debug", args)
+  _log("debug", args)
 }
 function warn(...args: any[]) {
-  log("warn", args)
+  _log("warn", args)
 }
 function error(...args: any[]) {
-  log("error", args)
+  _log("error", args)
 }
 
 self.onmessage = function (e) {
@@ -50,10 +51,11 @@ self.onmessage = function (e) {
     case "start":
       {
         id = msg.id
-        const wasntVerbose = LOG_LEVELS[logLevel] < LOG_LEVELS[msg.logLevel]
+        const sayGotNow =
+          LOG_LEVELS[logLevel] > LOG_LEVELS["info"] &&
+          LOG_LEVELS[msg.logLevel] <= LOG_LEVELS["info"]
         logLevel = msg.logLevel
-        if (wasntVerbose && LOG_LEVELS[logLevel] <= LOG_LEVELS["info"])
-          info("got", msg)
+        if (sayGotNow) info("got", msg)
         reply({ action: "started", id })
       }
       break
@@ -66,12 +68,10 @@ self.onmessage = function (e) {
     case "centroids":
       {
         const { labelsAndPoints, id: resolverId } = msg
-        debug({ labelsAndPoints, id })
         const centroids: Centroid[] = []
         for (const [label, points] of labelsAndPoints) {
           centroids.push(centroid(points, label))
         }
-        debug("I should be delivering the following centroids", centroids)
         reply({ action: "centroids", id, resolverId, centroids })
       }
       break
