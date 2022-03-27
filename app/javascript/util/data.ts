@@ -4,6 +4,7 @@
 
 export type Point = {
   label?: string
+  big?: boolean
   x: number
   y: number
 }
@@ -52,7 +53,7 @@ export const centroid = (points: Point[], label: string): Centroid => {
   }
   x /= points.length
   y /= points.length
-  return { x, y, label }
+  return { x, y, label, big: false }
 }
 
 // pick n items randomly

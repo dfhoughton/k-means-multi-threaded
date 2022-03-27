@@ -14,6 +14,7 @@ export type ToWorker =
 type StartMsg = {
   action: "start"
   id: number
+  logLevel: LogLevel
 }
 
 type StopMsg = {
@@ -63,6 +64,12 @@ type ClusteredMsg = {
   points: Point[]
 }
 
+export const LOG_LEVELS = {
+  info: 0, debug: 1, warn: 2, error: 3
+} as const
+
+export type LogLevel = "info" | "debug" | "warn" | "error"
+
 // the thread pool manager
 export class ClusteringManager {
   private workerResolvers: Array<(workers: Worker[]) => void> = []
@@ -71,25 +78,56 @@ export class ClusteringManager {
   private stopped = false
   private terminatedThreads: Set<number> = new Set()
   private availableThreads: Set<number> = new Set()
+  private availableIndices: number[] = []
   private workerSource!: string
   private _threads = 0
   private workers: Array<Worker | null> = []
+  private logLevel: LogLevel = "error"
   public get threads(): number {
     return this._threads
   }
   // setter is useful so we can manage the threads
   public set threads(value: number) {
+    if (this.stopped) return
     if (value === 0) throw new Error("you must have at least one thread")
-    while (this.workers.length < value) this.addThread()
-    while (this.workers.length > value) this.removeThread()
+    while (this.threads < value) this.addThread()
+    while (this.threads > value) this.removeThread()
   }
 
-  constructor(threads: number, workerSource: string) {
+  constructor(threads: number, workerSource: string, logLevel: LogLevel = "warn") {
     this.workerSource = workerSource
+    this.logLevel = logLevel
     for (let i = 0; i < threads; i++) {
       this.addThread()
     }
   }
+  // don't use this directly! use one of info, debug, warn, or error
+  private log(level: LogLevel, args: any[]): void {
+    if (LOG_LEVELS[this.logLevel] <= LOG_LEVELS[level]) {
+      let f
+      switch (level) {
+        case "info":
+          f = console.log
+          break
+        case "debug":
+          f = console.debug
+          break
+        case "warn":
+          f = console.warn
+          break
+        case "error":
+          f = console.error
+          break
+        default:
+          assertNever(level)
+      }
+      f('[main]', ...args)
+    }
+  }
+  private info(...args: any[]) { this.log("info", args)}
+  private debug(...args: any[]) { this.log("debug", args)}
+  private warn(...args: any[]) { this.log("warn", args)}
+  private error(...args: any[]) { this.log("error", args)}
   private removeThread() {
     if (this.stopped) return
     if (this._threads === 1)
@@ -114,13 +152,14 @@ export class ClusteringManager {
       me.handleMsg(e.data as FromWorker)
     }
     w.onmessage = handler.bind(w)
-    const id = this.workers.length
-    this.send(w, { action: "start", id })
-    this.workers.push(w)
+    const id = this.getNextWorkerIndex()
+    this.send(w, { action: "start", id, logLevel: this.logLevel })
+    this.workers[id] = w
     this._threads += 1
   }
   // type checking of sent messages
   private send(w: Worker, msg: ToWorker) {
+    this.info('sending', msg)
     w.postMessage(msg)
   }
   private nextResolverId() {
@@ -137,6 +176,9 @@ export class ClusteringManager {
       this.availableThreads.clear()
       return ar
     }
+  }
+  private getNextWorkerIndex(): number {
+    return this.availableIndices.pop() ?? this.workers.length
   }
   // turns workersAvailable into a promise
   private async getWorkers(): Promise<Worker[]> {
@@ -195,8 +237,10 @@ export class ClusteringManager {
     )
     return new Promise((resolve, _reject) => {
       Promise.all(promises).then((centroids) => {
+        this.debug('the promise has begun', centroids)
         let newCentroids = centroids.shift()!
         for (const otherCentroids of centroids) {
+          this.debug('we got these centroids', otherCentroids)
           newCentroids = newCentroids.concat(otherCentroids)
         }
         newCentroids.sort(pointSorter)
@@ -236,12 +280,14 @@ export class ClusteringManager {
   }
   private handleMsg(msg: FromWorker) {
     if (this.stopped) return
+    this.info('handling', msg)
     switch (msg.action) {
       case "stopped":
         const w = this.workers[msg.id]
         this.terminatedThreads.delete(msg.id)
         w?.terminate()
         this.workers[msg.id] = null
+        this.availableIndices.push(msg.id)
         break
       case "started":
         this.availableThreads.add(msg.id)
@@ -272,6 +318,7 @@ export class ClusteringManager {
 
   // rudely stop all threads regardless of their current state
   stop() {
+    this.info('stopping')
     this.stopped = true
     for (const w of this.workers) {
       w?.terminate()

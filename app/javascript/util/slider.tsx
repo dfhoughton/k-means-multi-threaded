@@ -8,6 +8,7 @@ type SliderProps = {
   max: number
   step?: number
   value: number
+  disabled: boolean
   onChange: (v: number) => void
 }
 
@@ -18,6 +19,7 @@ export const LabeledSlider: React.FC<SliderProps> = ({
   max,
   step = 1,
   value,
+  disabled,
   onChange,
 }) => {
   const [n, setN] = useState(value)
@@ -29,6 +31,7 @@ export const LabeledSlider: React.FC<SliderProps> = ({
         {...{ min, max, step }}
         value={n}
         marks
+        disabled={disabled}
         onChange={(_e, n) => {
           const num = n as any as number
           setN(num)

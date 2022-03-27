@@ -37,12 +37,12 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     svg = svg.select("svg")
     for (const p of [up, down, ...data]) {
       if (!p) continue
-      const { x, y, label } = p
+      const { x, y, label, big } = p
       svg
         .append("circle")
         .style("stroke", "gray")
         .style("fill", label ?? "white")
-        .attr("r", radius)
+        .attr("r", big ? radius * 1.5 : radius)
         .attr("cy", y)
         .attr("cx", x)
     }
@@ -52,6 +52,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     const newDown: Point = {
       x: e.clientX - r.left,
       y: e.clientY - r.top,
+      big: true,
       label: "red",
     }
     setDown(newDown)
@@ -63,6 +64,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     const newUp = {
       x: e.clientX - r.left,
       y: e.clientY - r.top,
+      big: true,
       label: "green",
     }
     setUp(newUp)
