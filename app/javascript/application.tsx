@@ -17,8 +17,9 @@ import { assertNever, Centroid, pick, Point, setId, splat } from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
 
-const mdTheme = createTheme()
+// some things I chose to keep as constants to keep the UI simple
 
+// palette borrowed from http://alumni.media.mit.edu/~wad/color/numbers.html
 const COLORS = [
   "rgb(173, 35, 35)", // red
   "rgb(129, 197, 122)", // lt green
@@ -43,6 +44,8 @@ const ZOOM = 2.5 as const
 const SPLAT_MIN = 5 as const
 const SPLAT_MAX = 200 as const
 const PAUSE = 2000 as const
+
+const mdTheme = createTheme()
 
 const App: React.FC = () => {
   const [threads, setThreads] = useState(1)
@@ -224,6 +227,7 @@ const App: React.FC = () => {
                   clusterer.threads = n
                 }}
               />
+              <hr style={{width: '100%', color: 'aliceblue'}}/>
               <LabeledSlider
                 label="radius"
                 min={2}
@@ -232,6 +236,7 @@ const App: React.FC = () => {
                 disabled={false}
                 onChange={(n) => setRadius(n)}
               />
+              <hr style={{width: '100%', color: 'aliceblue'}}/>
               <Tooltip
                 title="pick a random set of nodes to be initial cluster centroids"
                 arrow
