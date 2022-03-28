@@ -206,7 +206,7 @@ const App: React.FC = () => {
         assertNever(nextAction)
     }
   }
-  setTimeout(doNext, running ? PAUSE : 0)
+  const interval = setTimeout(doNext, running ? PAUSE : 0)
 
   return (
     <ThemeProvider theme={mdTheme}>
@@ -312,7 +312,15 @@ const App: React.FC = () => {
               </Tooltip>
               <Tooltip title="stop clustering" arrow placement="right">
                 <span>
-                  <Button variant="outlined" color="error" disabled={!running}>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    disabled={!running}
+                    onClick={() => {
+                      clearInterval(interval)
+                      setState({ ...state, running: false })
+                    }}
+                  >
                     Stop
                   </Button>
                 </span>
