@@ -16,10 +16,10 @@ export type Centroid = Required<Point>
 export const categorize = (points: Point[], centroids: Point[]) => {
   const [c, ...rest] = centroids
   for (const p of points) {
-    let d = distance(p, c)
+    let d = squaredDistance(p, c)
     let label = c.label
     for (const c2 of rest) {
-      const d2 = distance(p, c2)
+      const d2 = squaredDistance(p, c2)
       if (d2 < d) {
         d = d2
         label = c2.label
@@ -80,10 +80,16 @@ export const setId = (points: Point[]): string => {
 
 // the euclidean distance between two points
 const distance = (p1: Point, p2: Point): number => {
+  return Math.sqrt(squaredDistance(p1, p2))
+}
+
+// the euclidean distance between two points
+const squaredDistance = (p1: Point, p2: Point): number => {
   const { x: x1, y: y1 } = p1
   const { x: x2, y: y2 } = p2
-  return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
+  return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)
 }
+
 
 // given a start point and and end point inside a rectangle, generates
 // a random splat around the start point with the distance from the start to the end
