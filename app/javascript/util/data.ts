@@ -34,12 +34,14 @@ export const pointSorter = (
   { x: x1, y: y1, label: l1 = "" }: Point,
   { x: x2, y: y2, label: l2 = "" }: Point
 ): number => {
+  // put ungrouped group before group other groups and put groups together
+  if (l1 < l2) return -1
+  if (l2 < l1) return 1
+  // within a group, sort by position
   if (x1 < x2) return -1
   if (x2 < x1) return 1
   if (y1 < y2) return -1
   if (y2 < y1) return 1
-  if (l1 < l2) return -1
-  if (l1 < l1) return 1
   return 0
 }
 

@@ -277,6 +277,7 @@ export class ClusteringManager {
       }
     }
   }
+  // a thread finished some task; wrap things up
   private handleMsg(msg: FromWorker) {
     if (this.stopped) return
     this.info('handling', msg)

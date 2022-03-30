@@ -1,4 +1,3 @@
-// Entry point for the build script in your package.json
 import {
   Box,
   Button,
@@ -13,7 +12,7 @@ import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
 import * as ReactDOM from "react-dom"
 import { ClusteringManager } from "./util/clustering"
-import { assertNever, Centroid, pick, Point, setId, splat } from "./util/data"
+import { assertNever, Centroid, pick, Point, pointSorter, setId, splat } from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
 
@@ -24,26 +23,26 @@ const COLORS = [
   "rgb(173, 35, 35)", // red
   "rgb(129, 197, 122)", // lt green
   "rgb(42, 75, 215)", // blue
-  "rgb(160, 160, 160)", // light gray
-  "rgb(29, 105, 20)", // green
-  "rgb(255, 238, 51)", // yellow
-  "rgb(0, 0, 0)", // black
   "rgb(255, 146, 51)", // orange
+  "rgb(29, 105, 20)", // green
+  "rgb(0, 0, 0)", // black
   "rgb(129, 38, 192)", // purple
-  "rgb(41, 208, 208)", // cyan
   "rgb(129, 74, 25)", // brown
+  "rgb(255, 238, 51)", // yellow
+  "rgb(41, 208, 208)", // cyan
   "rgb(255, 205, 243)", // pink
-  "rgb(255, 255, 255)", // white
   "rgb(157, 175, 255)", // lt blue
+  "rgb(160, 160, 160)", // light gray
   "rgb(233, 222, 187)", // tan
   "rgb(87, 87, 87)", // dark gray
+  "rgb(255, 255, 255)", // white
 ] as const
 const WIDTH = 800 as const
 const HEIGHT = 800 as const
 const ZOOM = 2.5 as const
 const SPLAT_MIN = 5 as const
 const SPLAT_MAX = 200 as const
-const PAUSE = 50 as const
+const PAUSE = 25 as const
 
 const mdTheme = createTheme()
 
@@ -136,6 +135,8 @@ const App: React.FC = () => {
     for (let i = 0; i < newCentroids.length; i++) {
       newCentroids[i].label = COLORS[i]
     }
+    // sorting puts centroids last, so they're less likely to be covered
+    data.sort(pointSorter)
     setState({
       ...clearBuffers(state),
       data: [...data],

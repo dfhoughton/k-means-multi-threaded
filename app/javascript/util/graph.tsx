@@ -39,7 +39,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     svg.append("svg").attr("width", width).attr("height", height)
 
     svg = svg.select("svg")
-    for (const p of [up, down, ...data]) {
+    for (const p of [...data, up, down]) {
       if (!p) continue
       const { x, y, label, big } = p
       svg
