@@ -1,11 +1,12 @@
 import * as React from "react"
 import * as d3 from "d3"
-import { Point } from "./data"
+import { Centroid, Point } from "./data"
 import { useEffect, useRef, useState } from "react"
 import { Box, Typography } from "@mui/material"
 
 export type ClusterChartProps = {
   data: Point[]
+  centroids: Centroid[]
   width: number
   height: number
   radius: number
@@ -19,6 +20,7 @@ export type ClusterChartProps = {
 
 export const ClusterChart: React.FC<ClusterChartProps> = ({
   data,
+  centroids,
   width,
   height,
   radius,
@@ -39,14 +41,32 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     svg.append("svg").attr("width", width).attr("height", height)
 
     svg = svg.select("svg")
-    for (const p of [...data, up, down]) {
-      if (!p) continue
-      const { x, y, label, big } = p
+    for (const { x, y, label } of data) {
       svg
         .append("circle")
         .style("stroke", "gray")
         .style("fill", label ?? "white")
-        .attr("r", big ? radius * 1.5 : radius)
+        .attr("r", radius)
+        .attr("cy", y)
+        .attr("cx", x)
+    }
+    for (const { x, y, label } of centroids) {
+      svg
+        .append("circle")
+        .style("stroke", "red")
+        .style("fill", label)
+        .attr("r", radius * 2)
+        .attr("cy", y)
+        .attr("cx", x)
+    }
+    for (const p of [up, down]) {
+      if (!p) continue
+      const { x, y, label } = p
+      svg
+        .append("circle")
+        .style("stroke", "gray")
+        .style("fill", label ?? "white")
+        .attr("r", radius * 1.5)
         .attr("cy", y)
         .attr("cx", x)
     }
@@ -56,7 +76,6 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     const newDown: Point = {
       x: e.clientX - r.left,
       y: e.clientY - r.top,
-      big: true,
       label: "red",
     }
     setDown(newDown)
@@ -68,7 +87,6 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     const newUp = {
       x: e.clientX - r.left,
       y: e.clientY - r.top,
-      big: true,
       label: "green",
     }
     setUp(newUp)

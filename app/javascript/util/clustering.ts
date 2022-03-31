@@ -101,6 +101,59 @@ export class ClusteringManager {
       this.addThread()
     }
   }
+
+  // recalculate the centroids of the clusters in the points
+  public async centroids(points: Point[]): Promise<Centroid[]> {
+    // partition the points up into their clusters
+    const map: Map<string, Point[]> = new Map()
+    for (const p of points) {
+      const { label = "" } = p
+      let ar = map.get(label) ?? []
+      map.set(label, ar)
+      ar.push(p)
+    }
+    const partitions: [string, Point[]][] = Array.from(map.entries())
+    let workers = await this.getWorkers()
+    // return unneeded workers
+    for (let i = partitions.length; i < workers.length; i++) {
+      this.send(workers[i], { action: "resume" })
+    }
+    // reduce down to the needed array
+    workers = workers.slice(0, partitions.length)
+    // send off all the centroid work to the workers
+    const promises = zip(workers, group(workers.length, partitions)).map(
+      ([w, labelsAndPoints]) => this.doSomeCentroids(w, labelsAndPoints)
+    )
+    return new Promise((resolve, _reject) => {
+      Promise.all(promises).then((centroids) => {
+        let newCentroids = centroids.shift()!
+        for (const otherCentroids of centroids) {
+          newCentroids = newCentroids.concat(otherCentroids)
+        }
+        newCentroids.sort(pointSorter)
+        resolve(newCentroids)
+      })
+    })
+  }
+
+  // recalculate the clusters
+  public async cluster(centroids: Centroid[], points: Point[]): Promise<Point[]> {
+    const workers = await this.getWorkers()
+    const promises = zip(workers, group(workers.length, points)).map(
+      ([worker, points]) => this.doOneClustering(worker, centroids, points)
+    )
+    return new Promise((resolve, _reject) => {
+      Promise.all(promises).then((parts) => {
+        let newPoints = parts.shift()!
+        for (const otherPart of parts) {
+          newPoints = newPoints.concat(otherPart)
+        }
+        newPoints.sort(pointSorter)
+        resolve(newPoints)
+      })
+    })
+  }
+
   // don't use this directly! use one of info, debug, warn, or error
   private _log(level: LogLevel, args: any[]): void {
     if (LOG_LEVELS[this.logLevel] <= LOG_LEVELS[level]) {
@@ -214,60 +267,11 @@ export class ClusteringManager {
       this.send(w, { action: "cluster", id, centroids, points })
     })
   }
-  // recalculate the centroids of the clusters in the points
-  async centroids(points: Point[]): Promise<Centroid[]> {
-    // partition the points up into their clusters
-    const map: Map<string, Point[]> = new Map()
-    for (const p of points) {
-      const { label = "" } = p
-      let ar = map.get(label) ?? []
-      map.set(label, ar)
-      ar.push(p)
-    }
-    const partitions: [string, Point[]][] = Array.from(map.entries())
-    let workers = await this.getWorkers()
-    // return unneeded workers
-    for (let i = partitions.length; i < workers.length; i++) {
-      this.send(workers[i], { action: "resume" })
-    }
-    // reduce down to the needed array
-    workers = workers.slice(0, partitions.length)
-    // send off all the centroid work to the workers
-    const promises = zip(workers, group(workers.length, partitions)).map(
-      ([w, labelsAndPoints]) => this.doSomeCentroids(w, labelsAndPoints)
-    )
-    return new Promise((resolve, _reject) => {
-      Promise.all(promises).then((centroids) => {
-        let newCentroids = centroids.shift()!
-        for (const otherCentroids of centroids) {
-          newCentroids = newCentroids.concat(otherCentroids)
-        }
-        newCentroids.sort(pointSorter)
-        resolve(newCentroids)
-      })
-    })
-  }
-  // recalculate the clusters
-  async cluster(centroids: Centroid[], points: Point[]): Promise<Point[]> {
-    const workers = await this.getWorkers()
-    const promises = zip(workers, group(workers.length, points)).map(
-      ([worker, points]) => this.doOneClustering(worker, centroids, points)
-    )
-    return new Promise((resolve, _reject) => {
-      Promise.all(promises).then((parts) => {
-        let newPoints = parts.shift()!
-        for (const otherPart of parts) {
-          newPoints = newPoints.concat(otherPart)
-        }
-        newPoints.sort(pointSorter)
-        resolve(newPoints)
-      })
-    })
-  }
 
   // a thread just became available; see if we can do some work again
   private checkForWork(id: number) {
     this.availableThreads.add(id)
+    // do we already have some work queued up?
     if (this.workerResolvers.length) {
       const workers = this.workersAvailable()
       if (workers) {

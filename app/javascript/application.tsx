@@ -10,9 +10,18 @@ import {
 } from "@mui/material"
 import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
-import * as ReactDOM from "react-dom"
+// special React 18 thing
+import * as ReactDOMClient from "react-dom/client"
 import { ClusteringManager } from "./util/clustering"
-import { assertNever, Centroid, pick, Point, pointSorter, setId, splat } from "./util/data"
+import {
+  assertNever,
+  Centroid,
+  pick,
+  Point,
+  pointSorter,
+  setId,
+  splat,
+} from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
 
@@ -354,7 +363,7 @@ const App: React.FC = () => {
                 <Box>{timeDelta}</Box>
               </Stack>
               <ClusterChart
-                {...{ data, radius, done, running }}
+                {...{ data, centroids, radius, done, running }}
                 width={WIDTH}
                 height={HEIGHT}
                 border={4}
@@ -371,6 +380,8 @@ const App: React.FC = () => {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const rootEl = document.getElementById("app")
-  ReactDOM.render(<App />, rootEl)
+  const rootEl = document.getElementById("app")!
+  // special React 18 stuff
+  const root = ReactDOMClient.createRoot(rootEl)
+  root.render(<App />)
 })
