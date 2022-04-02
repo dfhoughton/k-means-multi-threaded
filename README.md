@@ -68,7 +68,9 @@ with this sausage links in a circle structure.
 ## Using the app
 
 The procedure:
-- you create some data by laying down "splats" in the square on the right
+- you create some data by
+  - laying down "splats" in the data box
+  - "misting" the data box
 - you specify a number of clusters and threads
 - you "pick" as many seed centroids as you want clusters
 - you set things going
@@ -81,6 +83,9 @@ The procedure:
 - you add splats and start again or click "clear" to start fresh
 - you can tinker with the diameter of the circles drawn using the radius slider
 
+### misting
+
+If you click the "mist" button 50 data points will be sprinkled randomly but more or less evenly across the data box.
 ### splats
 
 To add a splat, you click inside the data box and hold the button down. A red dot will appear where you clicked. You drag the mouse to another
@@ -107,4 +112,4 @@ With every iteration the time to cluster and the time to recalculate centroids i
 The value is a rounded number of milliseconds. The value displayed is the average over all the iterations.
 
 Each iteration is actually longer than this, because it includes a fixed pause after each step of the iteration. This is to make it easier to
-perceive the evolution of the clustering. See the `PAUSE` constant in `app/javascript/application.tsx`.
+perceive the evolution of the clustering. See the `PAUSE` constant in `app/javascript/util/constants.ts`.

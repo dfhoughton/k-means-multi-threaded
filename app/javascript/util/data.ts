@@ -2,6 +2,8 @@
  * Data manipulation functions and types
  */
 
+import { ZOOM } from "./constants"
+
 export type Point = {
   label?: string
   x: number
@@ -136,17 +138,23 @@ const randomSplat = ({
 }): Point[] => {
   const splat: Point[] = []
   while (splat.length < count) {
+    const [dx, dy] = swivel(shiver(jump(0, radius, zoom)))
     splat.push({
-      x: shiver(jump(x, radius, zoom), radius),
-      y: shiver(jump(y, radius, zoom), radius),
+      x: x + dx,
+      y: y + dy,
     })
   }
   return splat
 }
 
+function swivel(n: number): [number, number] {
+  const theta = 2 * Math.PI * Math.random()
+  return [n * Math.cos(theta), n * Math.sin(theta)]
+}
+
 // add a tiny random jitter to a number
-const shiver = (n: number, magnitude: number = 2): number =>
-  n + magnitude * (Math.random() < 0.5 ? -Math.random() : Math.random())
+const shiver = (n: number): number =>
+  n + ZOOM * (Math.random() < 0.5 ? -Math.random() : Math.random())
 
 // shift n a random, binomially distributed amount with a maximum amount of radius
 const jump = (n: number, radius: number, step: number = 2): number => {

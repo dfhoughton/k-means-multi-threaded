@@ -14,6 +14,15 @@ import { useEffect, useMemo, useState } from "react"
 import * as ReactDOMClient from "react-dom/client"
 import { ClusteringManager } from "./util/clustering"
 import {
+  COLORS,
+  HEIGHT,
+  PAUSE,
+  SPLAT_MAX,
+  SPLAT_MIN,
+  WIDTH,
+  ZOOM,
+} from "./util/constants"
+import {
   assertNever,
   Centroid,
   pick,
@@ -24,59 +33,6 @@ import {
 } from "./util/data"
 import { ClusterChart } from "./util/graph"
 import { LabeledSlider } from "./util/slider"
-
-// some things I chose to keep as constants to keep the UI simple
-
-// palette borrowed from http://alumni.media.mit.edu/~wad/color/numbers.html
-const COLOR_MAP = {
-  red: "rgb(173, 35, 35)",
-  ltGreen: "rgb(129, 197, 122)",
-  blue: "rgb(42, 75, 215)",
-  orange: "rgb(255, 146, 51)",
-  green: "rgb(29, 105, 20)",
-  black: "rgb(0, 0, 0)",
-  purple: "rgb(129, 38, 192)",
-  brown: "rgb(129, 74, 25)",
-  yellow: "rgb(255, 238, 51)",
-  cyan: "rgb(41, 208, 208)",
-  pink: "rgb(255, 205, 243)",
-  ltBlue: "rgb(157, 175, 255)",
-  ltGray: "rgb(160, 160, 160)",
-  tan: "rgb(233, 222, 187)",
-  dkGray: "rgb(87, 87, 87)",
-  white: "rgb(255, 255, 255)",
-} as const
-const REVERSE_COLOR_MAP = Object.fromEntries(
-  Object.entries(COLOR_MAP).map(([k, v]) => [v, k])
-)
-const COLORS = Array.from(Object.values(COLOR_MAP))
-const CONTRASTS = {
-  red: "ltGreen",
-  ltGreen: "red",
-  blue: "orange",
-  orange: "blue",
-  green: "orange",
-  yellow: "green",
-  cyan: "brown",
-  brown: "cyan",
-  tan: "blue",
-  black: "red",
-  purple: "orange",
-  pink: "blue",
-  ltBlue: "red",
-  ltGray: "black",
-  dkGray: "orange",
-  white: "red",
-} as const
-export const contrasty = (color: string): string =>
-  // @ts-ignore
-  COLOR_MAP[CONTRASTS[REVERSE_COLOR_MAP[color]]]
-const WIDTH = 800 as const
-const HEIGHT = 800 as const
-const ZOOM = 2.5 as const
-const SPLAT_MIN = 5 as const
-const SPLAT_MAX = 200 as const
-const PAUSE = 25 as const
 
 const mdTheme = createTheme()
 
@@ -158,6 +114,15 @@ const App: React.FC = () => {
   // what to do when the mouse leaves the canvas
   const leave = () => {
     setSplatStart(null)
+  }
+  const mist = () => {
+    const newData = [...data]
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * WIDTH
+      const y = Math.random() * HEIGHT
+      newData.push({ x, y })
+    }
+    setState({ ...state, data: newData })
   }
 
   // clustering callbacks
@@ -298,6 +263,17 @@ const App: React.FC = () => {
                 onChange={(n) => setRadius(n)}
               />
               <hr style={{ width: "100%", color: "aliceblue" }} />
+              <Tooltip
+                title="and some random data points distributed evenly across the field"
+                arrow
+                placement="right"
+              >
+                <span>
+                  <Button variant="outlined" disabled={running} onClick={mist}>
+                    Mist
+                  </Button>
+                </span>
+              </Tooltip>
               <Tooltip
                 title="pick a random set of nodes to be initial cluster centroids"
                 arrow

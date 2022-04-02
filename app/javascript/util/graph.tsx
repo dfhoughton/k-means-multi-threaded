@@ -3,7 +3,7 @@ import * as d3 from "d3"
 import { Centroid, Point } from "./data"
 import { useEffect, useRef, useState } from "react"
 import { Box, Typography } from "@mui/material"
-import { contrasty } from "../application"
+import { contrasty } from "./constants"
 
 export type ClusterChartProps = {
   data: Point[]
