@@ -72,6 +72,11 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     }
   }, [data, width, height, radius, up, down])
   const onMouseDown = (e: React.MouseEvent) => {
+    // due to the timout based looping, adding data while running
+    // has weird, undesirable effects -- you end up running with two data sets,
+    // strobing between them until you more or less accidentally settle into an
+    // equilibrium for one of them
+    if (running) return
     const r = e.currentTarget.getBoundingClientRect()
     const newDown: Point = {
       x: e.clientX - r.left,
@@ -83,6 +88,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     startCallback(newDown)
   }
   const onMouseUp = (e: React.MouseEvent) => {
+    if (running) return
     const r = e.currentTarget.getBoundingClientRect()
     const newUp = {
       x: e.clientX - r.left,
