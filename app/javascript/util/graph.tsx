@@ -3,6 +3,7 @@ import * as d3 from "d3"
 import { Centroid, Point } from "./data"
 import { useEffect, useRef, useState } from "react"
 import { Box, Typography } from "@mui/material"
+import { contrasty } from "../application"
 
 export type ClusterChartProps = {
   data: Point[]
@@ -50,12 +51,15 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
         .attr("cy", y)
         .attr("cx", x)
     }
+    const centroidRadius = radius * 2
+    const centroidStrokeWidth = Math.max(centroidRadius / 4.25, 2.5)
     for (const { x, y, label } of centroids) {
       svg
         .append("circle")
-        .style("stroke", "red")
+        .style("stroke", contrasty(label))
+        .style("stroke-width", centroidStrokeWidth)
         .style("fill", label)
-        .attr("r", radius * 2)
+        .attr("r", centroidRadius)
         .attr("cy", y)
         .attr("cx", x)
     }

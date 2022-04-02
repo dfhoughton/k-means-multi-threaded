@@ -77,7 +77,7 @@ The procedure:
     - while things are going, the data box's border turns orange
     - when equilibrium is reached, it turns green
     - while it is green, you can't add splats
-  - the provisional centroid during iteration is represented by a larger colored circle with a red border; this does not necessarily correspond to a data point
+  - the provisional centroid during iteration is represented by a larger colored circle with a colorful border; this does not necessarily correspond to a data point
 - you add splats and start again or click "clear" to start fresh
 - you can tinker with the diameter of the circles drawn using the radius slider
 
