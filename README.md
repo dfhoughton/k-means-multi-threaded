@@ -107,4 +107,4 @@ With every iteration the time to cluster and the time to recalculate centroids i
 The value is a rounded number of milliseconds. The value displayed is the average over all the iterations.
 
 Each iteration is actually longer than this, because it includes a fixed pause after each step of the iteration. This is to make it easier to
-perceive the evolution of the clustering. See the `PAUSE` constant.
+perceive the evolution of the clustering. See the [`PAUSE` constant](blob/main/app/javascript/application.tsx#L54).
