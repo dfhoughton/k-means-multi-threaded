@@ -85,7 +85,7 @@ The procedure:
 
 ### misting
 
-If you click the "mist" button 50 data points will be sprinkled randomly but more or less evenly across the data box.
+If you click the "mist" button 100 data points will be sprinkled randomly but more or less evenly across the data box.
 ### splats
 
 To add a splat, you click inside the data box and hold the button down. A red dot will appear where you clicked. You drag the mouse to another

@@ -122,7 +122,7 @@ const App: React.FC = () => {
       const y = Math.random() * HEIGHT
       newData.push({ x, y })
     }
-    setState({ ...state, data: newData })
+    setState({ ...state, done: false, data: newData })
   }
 
   // clustering callbacks

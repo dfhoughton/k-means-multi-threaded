@@ -35,7 +35,7 @@ const COLOR_MAP = {
     tan: "blue",
     black: "red",
     purple: "orange",
-    pink: "blue",
+    pink: "green",
     ltBlue: "red",
     ltGray: "black",
     dkGray: "orange",

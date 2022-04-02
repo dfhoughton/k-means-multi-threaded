@@ -121,6 +121,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
           setUp(null)
           leaveCallback()
         }}
+        sx={{display: 'flex'}}
       />
     </Box>
   )
