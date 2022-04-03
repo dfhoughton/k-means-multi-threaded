@@ -1,6 +1,6 @@
 # K-Means with a Web Worker Thread Pool
 
-<img src="https://github.com/dfhoughton/k-means-multi-threaded/blob/main/docs/sol_lewittish.png" alt="16 clusters of random noise" width="830">
+<img src="https://github.com/dfhoughton/k-means-multi-threaded/blob/main/docs/sol_lewitter.png" alt="16 clusters of random noise" width="830">
 
 This is meant to be a minimal rails app doing something interesting with web workers.
 It was initialized like so:
