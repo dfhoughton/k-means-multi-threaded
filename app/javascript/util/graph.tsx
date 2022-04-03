@@ -3,7 +3,7 @@ import * as d3 from "d3"
 import { Centroid, Point } from "./data"
 import { useEffect, useRef, useState } from "react"
 import { Box, Typography } from "@mui/material"
-import { contrasty } from "./constants"
+import { contrasty, MAX_RADIUS } from "./constants"
 
 export type ClusterChartProps = {
   data: Point[]
@@ -45,7 +45,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
     for (const { x, y, label } of data) {
       svg
         .append("circle")
-        .style("stroke", "gray")
+        .style("stroke", radius < MAX_RADIUS ? "gray" : label ?? "gray")
         .style("fill", label ?? "white")
         .attr("r", radius)
         .attr("cy", y)
@@ -121,7 +121,7 @@ export const ClusterChart: React.FC<ClusterChartProps> = ({
           setUp(null)
           leaveCallback()
         }}
-        sx={{display: 'flex'}}
+        sx={{ display: "flex" }}
       />
     </Box>
   )

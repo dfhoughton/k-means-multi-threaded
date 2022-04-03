@@ -50,3 +50,4 @@ const COLOR_MAP = {
   export const SPLAT_MIN = 5 as const
   export const SPLAT_MAX = 200 as const
   export const PAUSE = 25 as const
+  export const MAX_RADIUS = 10 as const

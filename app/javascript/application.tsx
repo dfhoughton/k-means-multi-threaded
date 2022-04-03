@@ -16,6 +16,7 @@ import { ClusteringManager } from "./util/clustering"
 import {
   COLORS,
   HEIGHT,
+  MAX_RADIUS,
   PAUSE,
   SPLAT_MAX,
   SPLAT_MIN,
@@ -257,7 +258,7 @@ const App: React.FC = () => {
               <LabeledSlider
                 label="radius"
                 min={2}
-                max={10}
+                max={MAX_RADIUS}
                 value={radius}
                 disabled={false}
                 onChange={(n) => setRadius(n)}

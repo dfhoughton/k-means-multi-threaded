@@ -50,7 +50,7 @@ its animation is pretty.
 
 ## Parallelism
 
-Because the clustering algorithm consists of many calculations, which are all independent of
+Because the clustering algorithm consists of many calculations which are all independent of
 each other within a given clustering step, it is very easy to parallelize. If you have `n` worker threads, you divide your list
 of points up into `n` segments of (near) equal length, give every worker the list of centroids and its segment, and let each one
 cluster the points in its segment. You need very little communication among threads, just the input and the output. To calculate a
@@ -81,7 +81,7 @@ The procedure:
     - while it is green, you can't add splats
   - the provisional centroid during iteration is represented by a larger colored circle with a colorful border; this does not necessarily correspond to a data point
 - you add splats and start again or click "clear" to start fresh
-- you can tinker with the diameter of the circles drawn using the radius slider
+- you can tinker with the diameter of the circles drawn using the radius slider; it you set the radius to maximum size the clustered points will be drawn without a gray perimeter
 
 ### misting
 
